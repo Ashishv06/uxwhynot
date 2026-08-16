@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UXAUDIT.AI — Prototype</title>
+<style>
+  :root{
+    --bg-0:#08060f;
+    --bg-1:#0e0a1c;
+    --purple-1:#7c3aed;
+    --purple-2:#4f46e5;
+    --purple-glow: rgba(124,58,237,0.45);
+    --card-bg:#141026;
+    --card-border: rgba(255,255,255,0.08);
+    --text-0:#ffffff;
+    --text-1:#c9c3de;
+    --text-2:#8b84a6;
+    --green:#22c55e;
+    --yellow:#eab308;
+    --red:#ef4444;
+    --radius:16px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{ height:100%; }
+  body{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg-0);
+    color: var(--text-0);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  button{ font-family:inherit; }
+  .screen{ display:none; min-height:100vh; }
+  .screen.active{ display:block; }
+
+  /* ---------- shared nav ---------- */
+  .nav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 24px 40px;
+  }
+  .logo{ font-weight:700; font-size:15px; letter-spacing:0.5px; color:var(--text-0); }
+  .btn{
+    font-size:13px; font-weight:600; cursor:pointer;
+    border-radius:999px; border:none; padding:10px 18px;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn-primary{
+    background: linear-gradient(135deg, var(--purple-1), var(--purple-2));
+    color:#fff; box-shadow: 0 4px 20px var(--purple-glow);
+  }
+  .btn-primary:hover{ filter:brightness(1.08); }
+  .btn-outline{
+    background:transparent; color:var(--text-0);
+    border:1px solid rgba(255,255,255,0.18);
+  }
+  .btn-outline:hover{ background:rgba(255,255,255,0.06); }
+  .btn-dark{ background:#000; color:#fff; border:1px solid rgba(255,255,255,0.14); }
+
+  /* ---------- Screen 1: Landing ---------- */
+  #screen-landing{
+    background:
+      radial-gradient(600px 400px at 50% 18%, var(--purple-glow), transparent 70%),
+      linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 55%);
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  .hero{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding: 40px 20px 120px;
+  }
+  .hero h1{
+    font-size:44px; font-weight:800; line-height:1.15; letter-spacing:-0.5px;
+    text-shadow: 0 0 40px var(--purple-glow);
+    max-width:680px;
+  }
+  .hero p.sub{
+    margin-top:16px; font-size:16px; color:var(--text-1); max-width:520px; line-height:1.5;
+  }
+  .search-pill{
+    margin-top:36px; display:flex; align-items:center; gap:8px;
+    background: rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.14);
+    backdrop-filter: blur(12px);
+    border-radius:999px; padding:8px 8px 8px 20px;
+    width:100%; max-width:560px;
+  }
+  .search-pill .spark{ color:var(--purple-1); font-size:16px; }
+  .search-pill input{
+    flex:1; background:transparent; border:none; outline:none;
+    color:var(--text-0); font-size:14px; padding:8px 4px;
+  }
+  .search-pill input::placeholder{ color:var(--text-2); }
+  .link-btn{
+    background:none; border:none; font-family:inherit;
+    font-size:13px; color:var(--text-2); cursor:pointer; padding:4px;
+  }
+  .link-btn:hover{ color:var(--text-1); text-decoration:underline; }
+  .hero .upload-link{ margin-top:18px; }
+  .hero .learn-more{ margin-top:56px; font-size:12px; }
+  .footer-bar{
+    background:#050308; padding:16px; text-align:center;
+    font-size:12px; color:var(--text-2); border-top:1px solid rgba(255,255,255,0.06);
+  }
+
+  /* ---------- Screen 3: Results ---------- */
+  #screen-results{ background: var(--bg-0); min-height:100vh; }
+  .results-shell{ display:flex; min-height:100vh; }
+  .sidebar{
+    width:220px; background:#0b0817; border-right:1px solid var(--card-border);
+    padding:24px 16px; display:flex; flex-direction:column; gap:6px;
+  }
+  .sidebar .logo{ padding:8px 8px 24px; }
+  .side-link{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
+    font-size:13.5px; color:var(--text-1); cursor:pointer; border:none; background:none;
+    font-family:inherit; text-align:left; width:100%;
+  }
+  .side-link.active{ background: linear-gradient(135deg, var(--purple-1), var(--purple-2)); color:#fff; }
+  .side-link:hover:not(.active){ background: rgba(255,255,255,0.05); }
+  .side-link .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; opacity:0.7; flex-shrink:0; }
+
+  .main{ flex:1; padding: 28px 36px; overflow-x:auto; }
+  .main-top{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:20px;}
+  .url-pill{
+    background:#141026; border:1px solid var(--card-border); border-radius:10px;
+    padding:10px 16px; font-size:13px; color:var(--text-1); flex:1; min-width:220px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .actions{ display:flex; gap:8px; }
+  .actions .btn{ font-size:12.5px; padding:9px 14px; }
+
+  .tabs{ display:flex; gap:22px; border-bottom:1px solid var(--card-border); margin-bottom:24px; }
+  .tab{
+    padding:10px 2px; font-size:13px; color:var(--text-2); cursor:pointer;
+    border-bottom:2px solid transparent; background:none; border-top:none; border-left:none; border-right:none;
+    font-family:inherit;
+  }
+  .tab.active{ color:var(--text-0); border-bottom-color: var(--purple-1); font-weight:600; }
+
+  .card{
+    background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--radius);
+    padding:22px; margin-bottom:24px;
+  }
+  .card h3{ font-size:15px; font-weight:700; margin-bottom:16px; }
+  .placeholder-text{ font-size:13px; color:var(--text-2); line-height:1.5; }
+
+  /* ---------- Detailed Findings ---------- */
+  .findings-section{ margin-top:6px; }
+  .findings-legend{ display:flex; flex-wrap:wrap; gap:20px; margin-bottom:24px; font-size:12.5px; color:var(--text-1); }
+  .findings-legend .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:6px; }
+  .findings-group{ margin-bottom:32px; }
+  .findings-group h4{ font-size:14px; font-weight:700; color:var(--text-0); margin-bottom:14px; }
+  .finding-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:18px; }
+  @media (max-width: 900px){ .finding-grid{ grid-template-columns:1fr; } }
+  .finding-item{ display:flex; flex-direction:column; }
+  .finding-shot{
+    background: repeating-linear-gradient(135deg, #1a1530, #1a1530 10px, #201a3a 10px, #201a3a 20px);
+    border:1px solid var(--card-border); border-radius:10px 10px 0 0;
+    height:110px; display:flex; align-items:center; justify-content:center;
+    font-size:11.5px; color:var(--text-2); letter-spacing:0.4px;
+  }
+  .finding-box{
+    border:1px solid var(--card-border); border-top:none; border-radius:0 0 10px 10px;
+    padding:14px 16px; font-size:12.5px; color:var(--text-1); line-height:1.5; flex:1;
+    border-left-width:3px;
+  }
+  .sev-tag{ display:block; font-size:10.5px; font-weight:800; letter-spacing:0.6px; margin-bottom:8px; }
+  .sev-critical{ background:rgba(239,68,68,0.08); border-left-color:var(--red); }
+  .sev-critical .sev-tag{ color:var(--red); }
+  .sev-major{ background:rgba(249,115,22,0.08); border-left-color:#f97316; }
+  .sev-major .sev-tag{ color:#f97316; }
+  .sev-moderate{ background:rgba(234,179,8,0.08); border-left-color:var(--yellow); }
+  .sev-moderate .sev-tag{ color:var(--yellow); }
+  .sev-works{ background:rgba(34,197,94,0.08); border-left-color:var(--green); }
+  .sev-works .sev-tag{ color:var(--green); }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  thead th{
+    text-align:left; padding:10px 12px; color:var(--text-2); font-weight:600;
+    border-bottom:1px solid var(--card-border); font-size:11.5px; text-transform:uppercase; letter-spacing:0.4px;
+  }
+  tbody td{ padding:12px; border-bottom:1px solid rgba(255,255,255,0.04); color:var(--text-1); vertical-align:middle; }
+  tbody tr:last-child td{ border-bottom:none; }
+
+  .badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:38px; height:38px; border-radius:50%; font-weight:700; font-size:13px;
+    border:2px solid; background:rgba(255,255,255,0.03);
+  }
+  .badge.red{ color:var(--red); border-color:var(--red); }
+  .badge.yellow{ color:var(--yellow); border-color:var(--yellow); }
+  .badge.green{ color:var(--green); border-color:var(--green); }
+  .arrow{ color:var(--text-2); font-size:16px; }
+
+  .newaudit{ position:fixed; bottom:20px; right:24px; }
+
+  /* ---------- Audit progress modal (pop-up) ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; z-index:1000;
+    background: rgba(4,2,10,0.82);
+    backdrop-filter: blur(8px);
+    display:none;
+    align-items:center; justify-content:center;
+    flex-direction:column;
+    padding:20px;
+    opacity:0;
+    transition: opacity 0.25s ease;
+  }
+  .modal-overlay.active{ display:flex; opacity:1; }
+  .modal-title{
+    font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+    color: var(--text-2); margin-bottom:20px;
+  }
+  .proc-card{
+    background:var(--card-bg); border:1px solid var(--card-border);
+    border-radius: var(--radius); width:100%; max-width:400px;
+    padding:36px 32px; text-align:center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    transform: translateY(10px) scale(0.98);
+    animation: cardIn 0.35s ease forwards;
+  }
+  @keyframes cardIn{ to{ transform:translateY(0) scale(1); } }
+  .proc-card h2{ font-size:20px; font-weight:700; }
+  .proc-card p.sub{ margin-top:10px; font-size:13px; color:var(--text-2); line-height:1.5; }
+  .checklist{ margin-top:24px; text-align:left; display:flex; flex-direction:column; gap:12px; min-height: 150px; }
+  .step{
+    display:flex; align-items:center; gap:10px; font-size:13.5px; color:var(--text-1);
+    opacity:0; transform: translateY(6px);
+    animation: stepIn 0.4s ease forwards;
+  }
+  @keyframes stepIn{ to{ opacity:1; transform:translateY(0);} }
+  .step .icon{ width:18px; height:18px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .step .icon.check{ color: var(--green); }
+  .step .icon.spin{
+    border:2px solid rgba(255,255,255,0.15); border-top-color: var(--purple-1);
+    border-radius:50%; width:14px; height:14px;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+  <!-- ============ SCREEN 1: LANDING ============ -->
+  <section id="screen-landing" class="screen active">
+    <div class="nav">
+      <div class="logo">UXAUDIT.AI</div>
+      <button type="button" class="btn btn-outline" aria-label="Menu">☰</button>
+    </div>
+    <div class="hero">
+      <h1>Audit your product's UX in seconds</h1>
+      <p class="sub">AI-powered UX and accessibility audits, backed by real evidence, not generic feedback.</p>
+      <div class="search-pill">
+        <span class="spark">✦</span>
+        <input id="url-input" type="text" placeholder="Paste your website or app URL" />
+        <button type="button" class="btn btn-primary" id="start-audit-btn">+ Start Free Audit</button>
+      </div>
+      <button type="button" class="link-btn upload-link">Or upload a screenshot instead →</button>
+      <button type="button" class="link-btn learn-more">Learn more about UXAUDIT.AI ↓</button>
+    </div>
+    <div class="footer-bar">© UXAUDIT.AI 2026. All rights reserved.</div>
+  </section>
+
+  <!-- ============ SCREEN 3: RESULTS ============ -->
+  <section id="screen-results" class="screen">
+    <div class="results-shell">
+      <aside class="sidebar">
+        <div class="logo">UXAUDIT.AI</div>
+        <button type="button" class="side-link active" data-side="score"><span class="dot"></span> Score Projection</button>
+        <button type="button" class="side-link" data-side="heuristic"><span class="dot"></span> Heuristic Evaluation</button>
+        <button type="button" class="side-link" data-side="a11y"><span class="dot"></span> Accessibility</button>
+        <button type="button" class="side-link" data-side="bench"><span class="dot"></span> Benchmarking</button>
+        <button type="button" class="side-link" data-side="settings"><span class="dot"></span> Settings</button>
+      </aside>
+      <main class="main">
+        <div class="main-top">
+          <div class="url-pill" id="result-url">https://example.com/product-page</div>
+          <div class="actions">
+            <button type="button" class="btn btn-outline" id="copy-btn">Copy</button>
+            <button type="button" class="btn btn-outline" id="preview-btn">Preview</button>
+            <button type="button" class="btn btn-dark" id="download-btn">Download PDF</button>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button type="button" class="tab active" data-tab="mobile">📱 Mobile</button>
+          <button type="button" class="tab" data-tab="desktop">🖥 Desktop</button>
+        </div>
+
+        <div class="section" id="section-score">
+          <div class="card">
+            <h3>Score Projection</h3>
+            <table>
+              <thead>
+                <tr><th>Category</th><th>Initial</th><th></th><th>Optimized</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Usability</td>
+                  <td><span class="badge red">25</span></td>
+                  <td class="arrow">→</td>
+                  <td><span class="badge green">100</span></td>
+                </tr>
+                <tr>
+                  <td>Accessibility</td>
+                  <td><span class="badge yellow">85</span></td>
+                  <td class="arrow">→</td>
+                  <td><span class="badge green">100</span></td>
+                </tr>
+                <tr>
+                  <td>Visual Design</td>
+                  <td><span class="badge yellow">71</span></td>
+                  <td class="arrow">→</td>
+                  <td><span class="badge green">100</span></td>
+                </tr>
+                <tr>
+                  <td>Conversion Readiness</td>
+                  <td><span class="badge green">94</span></td>
+                  <td class="arrow">→</td>
+                  <td><span class="badge green">100</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="findings-section">
+            <div class="findings-legend">
+              <span><span class="dot" style="background:var(--red)"></span>Critical — fix first</span>
+              <span><span class="dot" style="background:#f97316"></span>Major — significant barrier</span>
+              <span><span class="dot" style="background:var(--yellow)"></span>Moderate — meaningful friction</span>
+              <span><span class="dot" style="background:var(--green)"></span>What works well</span>
+            </div>
+
+            <div class="findings-group">
+              <h4>1 — Homepage</h4>
+              <div class="finding-grid">
+                <div class="finding-item">
+                  <div class="finding-shot">Screenshot</div>
+                  <div class="finding-box sev-critical"><span class="sev-tag">CRITICAL</span>No primary navigation to key sections — visitors can't browse core content without creating an account first.</div>
+                </div>
+                <div class="finding-item">
+                  <div class="finding-shot">Screenshot</div>
+                  <div class="finding-box sev-moderate"><span class="sev-tag">MODERATE</span>Support links are unlabeled and there's no FAQ or live chat — a thin safety net for new users.</div>
+                </div>
+                <div class="finding-item">
+                  <div class="finding-shot">Screenshot</div>
+                  <div class="finding-box sev-works"><span class="sev-tag">WHAT WORKS</span>Clear hero message and a single, unambiguous primary call-to-action above the fold.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="findings-group">
+              <h4>2 — Onboarding</h4>
+              <div class="finding-grid">
+                <div class="finding-item">
+                  <div class="finding-shot">Screenshot</div>
+                  <div class="finding-box sev-critical"><span class="sev-tag">CRITICAL</span>Account-type selector is unreachable by keyboard — keyboard-only users cannot get past step 1.</div>
+                </div>
+                <div class="finding-item">
+                  <div class="finding-shot">Screenshot</div>
+                  <div class="finding-box sev-major"><span class="sev-tag">MAJOR</span>No visible focus indicator anywhere in the flow — users tabbing through have no way to see where they are.</div>
+                </div>
+                <div class="finding-item">
+                  <div class="finding-shot">Screenshot</div>
+                  <div class="finding-box sev-works"><span class="sev-tag">WHAT WORKS</span>Inline, per-field validation with clear error text tied to each field.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="findings-group">
+              <h4>3 — Dashboard</h4>
+              <div class="finding-grid">
+                <div class="finding-item">
+                  <div class="finding-shot">Screenshot</div>
+                  <div class="finding-box sev-major"><span class="sev-tag">MAJOR</span>Primary action items are styled like plain text, with no tabindex or button role — invisible to keyboard and screen reader users.</div>
+                </div>
+                <div class="finding-item">
+                  <div class="finding-shot">Screenshot</div>
+                  <div class="finding-box sev-moderate"><span class="sev-tag">MODERATE</span>Progress indicator has no accessible name or value — screen readers get no indication it exists.</div>
+                </div>
+                <div class="finding-item">
+                  <div class="finding-shot">Screenshot</div>
+                  <div class="finding-box sev-works"><span class="sev-tag">WHAT WORKS</span>Consistent component styling and spacing across every screen in the flow.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section" id="section-heuristic">
+          <div class="card">
+            <h3>Heuristic Evaluation</h3>
+            <table>
+              <thead>
+                <tr><th>Heuristic</th><th>Score</th><th>Notes</th></tr>
+              </thead>
+              <tbody id="heuristic-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section" id="section-a11y" style="display:none;">
+          <div class="card"><h3>Accessibility</h3><p class="placeholder-text">Detailed WCAG 2.1 AA findings for this audit will appear here.</p></div>
+        </div>
+        <div class="section" id="section-bench" style="display:none;">
+          <div class="card"><h3>Benchmarking</h3><p class="placeholder-text">Competitive benchmarking results for this audit will appear here.</p></div>
+        </div>
+        <div class="section" id="section-settings" style="display:none;">
+          <div class="card"><h3>Settings</h3><p class="placeholder-text">Audit preferences and export settings will appear here.</p></div>
+        </div>
+      </main>
+    </div>
+    <button type="button" class="btn btn-primary newaudit" id="new-audit-btn">+ New Audit</button>
+  </section>
+
+  <!-- ============ AUDIT PROGRESS MODAL (pop-up) ============ -->
+  <div class="modal-overlay" id="audit-modal">
+    <div class="modal-title">Audit Progression States</div>
+    <div class="proc-card">
+      <h2>Running Your Audit...!</h2>
+      <p class="sub">We're exploring your product and checking it against real UX and accessibility standards. This won't take long, thanks for your patience.</p>
+      <div class="checklist" id="checklist"></div>
+    </div>
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  const screens = {
+    landing: document.getElementById('screen-landing'),
+    results: document.getElementById('screen-results'),
+  };
+  function showScreen(name){
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+    window.scrollTo(0,0);
+  }
+
+  // ---- Audit progress modal: animated checklist ----
+  const steps = [
+    'Reading your product',
+    'Mapping your key user flows',
+    'Running heuristic and accessibility checks',
+    'Benchmarking against competitors',
+    'Finalizing your report',
+  ];
+  const modal = document.getElementById('audit-modal');
+  const checklistEl = document.getElementById('checklist');
+  const STEP_DELAY_MS = 1100;
+
+  function renderChecklist(activeIndex){
+    checklistEl.innerHTML = '';
+    for (let i = 0; i <= activeIndex; i++) {
+      const isDone = i < activeIndex;
+      const row = document.createElement('div');
+      row.className = 'step' + (isDone ? ' done' : '');
+      row.innerHTML =
+        '<span class="icon ' + (isDone ? 'check' : 'spin') + '">' + (isDone ? '✔' : '') + '</span>' +
+        '<span>' + steps[i] + '</span>';
+      checklistEl.appendChild(row);
+    }
+  }
+
+  function runChecklist(onComplete){
+    let idx = 0;
+    renderChecklist(0);
+    const timer = setInterval(function () {
+      idx++;
+      if (idx >= steps.length) {
+        clearInterval(timer);
+        // show all 5 steps checked
+        checklistEl.innerHTML = '';
+        steps.forEach(function (label) {
+          const row = document.createElement('div');
+          row.className = 'step done';
+          row.innerHTML = '<span class="icon check">✔</span><span>' + label + '</span>';
+          checklistEl.appendChild(row);
+        });
+        setTimeout(onComplete, 800);
+        return;
+      }
+      renderChecklist(idx);
+    }, STEP_DELAY_MS);
+  }
+
+  function openAuditModal(){
+    modal.classList.add('active');
+    runChecklist(function () {
+      modal.classList.remove('active');
+      showScreen('results');
+    });
+  }
+
+  // ---- Heuristic Evaluation table content ----
+  const heuristics = [
+    ['Visibility of System Status', 8, 'Profile health and verification status are visible, but could be more actionable.'],
+    ['Match Between System and the Real World', 8, 'Terminology is generally understandable.'],
+    ['User Control and Freedom', 8, 'Users can manage team members and documents with clear navigation.'],
+    ['Consistency and Standards', 8, 'Components appear consistent across screens.'],
+    ['Error Prevention', 7, 'Additional inline guidance and validation would help reduce mistakes.'],
+    ['Recognition Rather Than Recall', 7, 'Users must infer the recommended sequence of onboarding tasks.'],
+    ['Flexibility and Efficiency of Use', 8, 'Frequent actions are accessible, but shortcuts for experienced users could improve efficiency.'],
+    ['Aesthetic and Minimalist Design', 8, 'Clean interface, though primary actions could stand out more.'],
+    ['Help Users Recognize, Diagnose, and Recover from Errors', 7, "Error handling isn't visible in the reviewed screens."],
+    ['Help and Documentation', 6, 'No in-context help or documentation link found during this audit.'],
+  ];
+  const heuristicBody = document.getElementById('heuristic-body');
+  heuristics.forEach(function (row) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + row[0] + '</td><td>' + row[1] + '/10</td><td>' + row[2] + '</td>';
+    heuristicBody.appendChild(tr);
+  });
+
+  // ---- Wiring ----
+  const startBtn = document.getElementById('start-audit-btn');
+  startBtn.addEventListener('click', function () {
+    const raw = document.getElementById('url-input').value.trim();
+    const url = raw || 'https://example.com/product-page';
+    document.getElementById('result-url').textContent = url;
+    openAuditModal();
+  });
+
+  document.getElementById('url-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') startBtn.click();
+  });
+
+  document.getElementById('new-audit-btn').addEventListener('click', function () {
+    document.getElementById('url-input').value = '';
+    showScreen('landing');
+  });
+
+  document.getElementById('copy-btn').addEventListener('click', function () {
+    const url = document.getElementById('result-url').textContent;
+    const btn = document.getElementById('copy-btn');
+    const original = btn.textContent;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).catch(function () {});
+    }
+    btn.textContent = 'Copied!';
+    setTimeout(function () { btn.textContent = original; }, 1200);
+  });
+
+  document.getElementById('preview-btn').addEventListener('click', function () {
+    const url = document.getElementById('result-url').textContent;
+    window.open(url, '_blank');
+  });
+
+  document.getElementById('download-btn').addEventListener('click', function () {
+    window.print();
+  });
+
+  document.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+    });
+  });
+
+  // Score Projection + Heuristic Evaluation are one continuous report and stay
+  // visible together; the sidebar just smooth-scrolls to the right anchor.
+  // Accessibility / Benchmarking / Settings are separate placeholder views.
+  const reportIds = ['section-score', 'section-heuristic'];
+  const placeholderIds = { a11y: 'section-a11y', bench: 'section-bench', settings: 'section-settings' };
+
+  document.querySelectorAll('.side-link').forEach(function (link) {
+    link.addEventListener('click', function () {
+      document.querySelectorAll('.side-link').forEach(function (l) { l.classList.remove('active'); });
+      link.classList.add('active');
+      const side = link.getAttribute('data-side');
+
+      if (side === 'score' || side === 'heuristic') {
+        reportIds.forEach(function (id) { document.getElementById(id).style.display = 'block'; });
+        Object.values(placeholderIds).forEach(function (id) { document.getElementById(id).style.display = 'none'; });
+        const anchorId = side === 'score' ? 'section-score' : 'section-heuristic';
+        document.getElementById(anchorId).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        reportIds.forEach(function (id) { document.getElementById(id).style.display = 'none'; });
+        Object.entries(placeholderIds).forEach(function (entry) {
+          document.getElementById(entry[1]).style.display = (entry[0] === side) ? 'block' : 'none';
+        });
+        window.scrollTo(0, 0);
+      }
+    });
+  });
+
+});
+</script>
+</body>
+</html>
