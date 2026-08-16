@@ -8,6 +8,13 @@ FROM mcr.microsoft.com/playwright:v1.62.1-jammy
 
 WORKDIR /app
 
+# better-sqlite3 ships prebuilt binaries for most platforms, but when none
+# matches (e.g. a very new Node version, like this image's), npm falls back
+# to compiling it from source via node-gyp — which needs a C++ toolchain
+# this base image doesn't include by default.
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies first so this layer is cached across builds that
 # don't touch package.json/package-lock.json.
 COPY package.json package-lock.json ./
