@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { groupFindingsBySection, severityClass } from "../lib/auditView";
+import { SAMPLE_CATEGORY_SCORES, SAMPLE_HEURISTICS, SAMPLE_FINDINGS } from "../lib/sampleAuditData";
 
 // Always-free categories run via real tooling (Lighthouse, axe-core), never
 // gated. Reasoned categories come from the Claude Senior UX Review and are
@@ -68,16 +69,35 @@ export default function Results({ audit, onNewAudit }) {
   const [copiedFindingKey, setCopiedFindingKey] = useState(null);
   const [findingsExpanded, setFindingsExpanded] = useState(false);
   const [opportunitiesExpanded, setOpportunitiesExpanded] = useState(false);
+  // "Upgrade to Premium" has no real payment/account system behind it yet.
+  // Clicking it shows a clearly-labeled sample of what the unlocked Senior
+  // UX Review looks like, instead of either doing nothing or silently
+  // pretending to be a real analysis of this page.
+  const [previewUnlocked, setPreviewUnlocked] = useState(false);
 
   const sectionRefs = useRef({});
 
   const scoreByCategory = {};
   (audit.scoreProjection || []).forEach((row) => { scoreByCategory[row.category] = row; });
 
-  const heuristics = audit.heuristics || [];
-  const findingGroups = groupFindingsBySection(audit.findings);
   const isFull = audit.tier === "full";
+  const showPreview = previewUnlocked && !isFull;
+  const showUnlocked = isFull || showPreview;
+
+  const heuristics = isFull ? (audit.heuristics || []) : showPreview ? SAMPLE_HEURISTICS : [];
+  // Real automated-scan findings — used by the Accessibility card regardless
+  // of preview state, since that data is real either way.
+  const realFindingGroups = groupFindingsBySection(audit.findings);
+  // Detailed Findings section: real findings on a full audit, sample
+  // findings while previewing, nothing on a plain locked view.
+  const findingGroups = isFull ? realFindingGroups : showPreview ? groupFindingsBySection(SAMPLE_FINDINGS) : [];
   const perf = audit.performance || null;
+
+  function scoreFor(key) {
+    if (scoreByCategory[key]) return scoreByCategory[key].initial;
+    if (showPreview && SAMPLE_CATEGORY_SCORES[key] != null) return SAMPLE_CATEGORY_SCORES[key];
+    return null;
+  }
 
   function scrollToCategory(key) {
     const el = sectionRefs.current[key];
@@ -129,22 +149,34 @@ export default function Results({ audit, onNewAudit }) {
 
         <div className="lh-gauge-row">
           {CATEGORY_ORDER.map(({ key, alwaysFree }) => {
-            const row = scoreByCategory[key];
-            const locked = !alwaysFree && !isFull;
+            const locked = !alwaysFree && !showUnlocked;
             return (
               <div className="lh-gauge-item" key={key}>
-                <Gauge score={row ? row.initial : null} locked={locked} onClick={() => scrollToCategory(key)} />
+                <Gauge score={scoreFor(key)} locked={locked} onClick={() => scrollToCategory(key)} />
                 <span className="lh-gauge-label">{key}</span>
               </div>
             );
           })}
         </div>
 
-        {!isFull && (
+        {!isFull && !showPreview && (
           <div className="upsell-banner">
-            <span className="upsell-badge">{audit.tier === "full" ? "Limit reached" : "Free scan"}</span>
+            <span className="upsell-badge">
+              {audit.upsell?.message?.startsWith("You've used all") ? "Limit reached" : "Free scan"}
+            </span>
             <p>{audit.upsell?.message}</p>
-            <button type="button" className="btn btn-primary">Upgrade to Premium →</button>
+            <button type="button" className="btn btn-primary" onClick={() => setPreviewUnlocked(true)}>
+              Upgrade to Premium →
+            </button>
+          </div>
+        )}
+        {showPreview && (
+          <div className="upsell-banner">
+            <span className="upsell-badge">Preview</span>
+            <p>
+              This is sample data showing what the full Senior UX Review looks like — not a real analysis of
+              this page. Run the real thing by actually upgrading to Premium.
+            </p>
           </div>
         )}
         {isFull && audit.remainingFreeAudits != null && (
@@ -202,9 +234,9 @@ export default function Results({ audit, onNewAudit }) {
               <p className="placeholder-text">Automated axe-core scan against the live DOM: contrast, alt text, labels, ARIA. Always included, on every plan.</p>
             </div>
           </div>
-          {!isFull && findingGroups.length > 0 ? (
+          {!isFull && realFindingGroups.length > 0 ? (
             <div className="lh-audit-list">
-              {findingGroups.flatMap(([, items]) => items).map((f, i) => (
+              {realFindingGroups.flatMap(([, items]) => items).map((f, i) => (
                 <div className="lh-audit-item" key={i}>
                   <span className={`lh-sev-dot sev-${(f.severity || "").toLowerCase().replace(/\s/g, "-")}`} />
                   <span>{f.issue}</span>
@@ -229,16 +261,19 @@ export default function Results({ audit, onNewAudit }) {
         ].map(({ key, desc }) => (
           <div className="lh-card" key={key} ref={(el) => (sectionRefs.current[key] = el)}>
             <div className="lh-card-head">
-              <Gauge score={isFull ? scoreByCategory[key]?.initial ?? null : null} locked={!isFull} onClick={() => {}} />
+              <Gauge score={showUnlocked ? scoreFor(key) : null} locked={!showUnlocked} onClick={() => {}} />
               <div>
                 <h3>{key}</h3>
                 <p className="placeholder-text">{desc}</p>
               </div>
             </div>
-            {!isFull && (
+            {!showUnlocked && (
               <p className="placeholder-text lh-locked-text">
                 Part of the full Senior UX Review. {audit.upsell?.message || "Upgrade to Premium to unlock this category."}
               </p>
+            )}
+            {showPreview && (
+              <p className="placeholder-text lh-locked-text">Sample score — upgrade to Premium for a real analysis of this page.</p>
             )}
           </div>
         ))}
@@ -261,11 +296,18 @@ export default function Results({ audit, onNewAudit }) {
         </div>
 
         {/* ---------- Detailed Findings ---------- */}
-        {isFull && findingGroups.length > 0 && (
+        {showUnlocked && findingGroups.length > 0 && (
           <div className="lh-card">
             <h3>Detailed Findings</h3>
             <div className="findings-section">
-              <div className="senior-callout">✦ Reviewed like a senior designer, not scanned like a linter — every finding below shows what we saw, why it matters, who it affects, and what to change.</div>
+              {showPreview && (
+                <div className="senior-callout">
+                  ✦ Sample findings — these illustrate the format, they aren&apos;t from a real analysis of this page.
+                </div>
+              )}
+              {!showPreview && (
+                <div className="senior-callout">✦ Reviewed like a senior designer, not scanned like a linter — every finding below shows what we saw, why it matters, who it affects, and what to change.</div>
+              )}
               <div className="findings-legend">
                 <span><span className="dot" style={{ background: "var(--red)" }} />Critical — fix first</span>
                 <span><span className="dot" style={{ background: "var(--purple-1)" }} />Major — significant barrier</span>
